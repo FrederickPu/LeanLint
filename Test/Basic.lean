@@ -22,7 +22,7 @@ example (p : Prop) (h : p) : p → p := by
 
 -- A single non-terminal `skip` (neither `intro` nor `have`) ⇒ one warning.
 /--
-warning: non-terminal tactic must be `intro` or `have`
+warning: non-terminal tactic `skip` found at position 31:2; must be `intro` or `have`
 
 Note: This linter can be disabled with `set_option linter.nonterminalDiscipline false`
 -/
@@ -38,11 +38,11 @@ example (p : Prop) (h : p) : p := by
 
 -- Two non-terminal offenders ⇒ two warnings, in source order.
 /--
-warning: non-terminal tactic must be `intro` or `have`
+warning: non-terminal tactic `skip` found at position 51:2; must be `intro` or `have`
 
 Note: This linter can be disabled with `set_option linter.nonterminalDiscipline false`
 ---
-warning: non-terminal tactic must be `intro` or `have`
+warning: non-terminal tactic `skip` found at position 52:2; must be `intro` or `have`
 
 Note: This linter can be disabled with `set_option linter.nonterminalDiscipline false`
 -/

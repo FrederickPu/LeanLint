@@ -41,7 +41,7 @@ example (p : Prop) (h : p) : p → p := by
 import LeanLint
 
 example : True := by
-  simp     -- ⚠️ warning: non-terminal tactic must be `intro` or `have`
+  simp     -- ⚠️ warning: non-terminal tactic `simp` found at position …; must be `intro` or `have`
   trivial  -- terminal → fine
 ```
 

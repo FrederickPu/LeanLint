@@ -67,8 +67,9 @@ partial def check (isTac : SyntaxNodeKind → Bool) (stx : Syntax) : CommandElab
     -- `tacs.pop` drops the last (terminal) tactic; everything left is non-terminal.
     for t in tacs.pop do
       unless allowedNonterminal.contains t.getKind do
+        let pos := (← getFileMap).toPosition (t.getPos?.getD 0)
         Linter.logLint linter.nonterminalDiscipline t
-          m!"non-terminal tactic must be `intro` or `have`"
+          m!"non-terminal tactic `{t}` found at position {pos.line}:{pos.column}; must be `intro` or `have`"
   for a in stx.getArgs do
     check isTac a
 

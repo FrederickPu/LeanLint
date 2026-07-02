@@ -28,7 +28,7 @@ example (p : Prop) (h : p) : p := by
 -- Inner block has a non-terminal `skip` ⇒ exactly one warning, reported inside the
 -- `have`'s proof, not on the `have` itself.
 /--
-warning: non-terminal tactic must be `intro` or `have`
+warning: non-terminal tactic `skip` found at position 38:4; must be `intro` or `have`
 
 Note: This linter can be disabled with `set_option linter.nonterminalDiscipline false`
 -/
@@ -53,11 +53,11 @@ example (p : Prop) (h : p) : p := by
 -- Non-terminal `skip` in the outer block AND in the inner block ⇒ two independent
 -- warnings; nesting does not mask either one.
 /--
-warning: non-terminal tactic must be `intro` or `have`
+warning: non-terminal tactic `skip` found at position 66:2; must be `intro` or `have`
 
 Note: This linter can be disabled with `set_option linter.nonterminalDiscipline false`
 ---
-warning: non-terminal tactic must be `intro` or `have`
+warning: non-terminal tactic `skip` found at position 68:4; must be `intro` or `have`
 
 Note: This linter can be disabled with `set_option linter.nonterminalDiscipline false`
 -/
@@ -82,7 +82,7 @@ example (p : Prop) (h : p) : p := by
 -- A non-terminal `skip` buried one level deeper than a clean outer `have` is still
 -- caught: the outer block is clean, but the innermost block is not.
 /--
-warning: non-terminal tactic must be `intro` or `have`
+warning: non-terminal tactic `skip` found at position 93:6; must be `intro` or `have`
 
 Note: This linter can be disabled with `set_option linter.nonterminalDiscipline false`
 -/
