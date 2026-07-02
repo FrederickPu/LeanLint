@@ -1,0 +1,58 @@
+# Writing proofs that pass LeanLint
+
+Your goal is to write Lean 4 proofs that are **human-readable** and that pass the
+`linter.tacticDiscipline` linter provided by this package.
+
+## The discipline
+
+The linter enforces a fixed shape on every `by` block:
+
+- The **last** tactic of a block is *terminal* and unrestricted — use whatever automation
+  closes the goal (`exact`, `simp`, `omega`, `decide`, `constructor <;> …`, …).
+- Every **earlier** (non-terminal) tactic must be `have`.
+- The **only** exception: the very first tactic of a block may be `intro`.
+- Every `by` block must start as `:= by` on the declaration or `have` line.
+- The first tactic after `by` must be on the next line, never on the `:= by` line.
+- Tactics inside a `by` block must be indented exactly two spaces past the line containing
+  that `by`; do not double-indent proof bodies.
+- Every `have` tactic must be immediately preceded by a `--` line comment explaining the
+  informal step, and the `have` proof itself must use `:= by`.
+
+So a well-formed block is an optional opening `intro`, then a run of commented `have`s,
+then a single closing tactic. Nested `by` blocks (each `have`'s proof) are checked the same
+way, at every depth.
+
+## How to write the proof
+
+1. First think of the most sensible **informal** proof.
+2. Turn each informal step into a `have` whose statement is that step's conclusion. Put the
+   informal sentence as a `--` comment on the line immediately above the `have`.
+3. If the goal opens with hypotheses to introduce, do it with a single leading `intro` (it
+   may take several names: `intro a b hab`). Introduce everything up front, not mid-proof.
+4. Write every `have` proof as `:= by` on the `have` line, then put the terminal tactic on
+   the next line indented exactly two more spaces. Do not write `:= by exact ...` on one
+   line.
+5. Close every `have`'s proof — and the final goal — with **terminal** automation: the last
+   tactic of each block does the work.
+
+## Example
+
+```lean
+example (a b : Nat) (h : a = b) : a + 1 = b + 1 := by
+  -- rewriting a to b makes both sides equal
+  have key : a + 1 = b + 1 := by
+    rw [h]
+  exact key
+```
+
+## Anti-patterns the linter will flag
+
+- A non-`have`, non-terminal tactic mid-proof: `simp` / `rw` / `constructor` before the
+  last line. Fold that work into a `have` or move it to terminal position.
+- An `intro` that is not the first tactic (e.g. a `have` before it). Hoist all `intro`s to
+  the front.
+- A `have` without a comment immediately above it.
+- A `have` proved by a bare term (`:= h`) or with `by` on the next line. Use `:= by` on the
+  `have` line.
+- A tactic on the same line as `by`, such as `:= by exact ...`.
+- A tactic indented more or less than exactly two spaces past the line containing its `by`.

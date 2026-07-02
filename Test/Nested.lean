@@ -22,18 +22,21 @@ namespace Test.Nested
 -- and if its inner proof is clean the example is clean.
 #guard_msgs in
 example (p : Prop) (h : p) : p := by
-  have h2 : p := h
+  -- h2 is the original proof of p
+  have h2 : p := by
+    exact h
   exact h2
 
 -- Inner block has a non-terminal `skip` ⇒ exactly one warning, reported inside the
 -- `have`'s proof, not on the `have` itself.
 /--
-warning: non-terminal tactic `skip` found at position 38:4; must be `intro` or `have`
+warning: non-terminal tactic `skip` found at position 41:4; must be `have` (or `intro`, as the first tactic)
 
-Note: This linter can be disabled with `set_option linter.nonterminalDiscipline false`
+Note: This linter can be disabled with `set_option linter.tacticDiscipline false`
 -/
 #guard_msgs in
 example (p : Prop) (h : p) : p := by
+  -- h2 follows from the original proof of p
   have h2 : p := by
     skip
     exact h
@@ -43,9 +46,13 @@ example (p : Prop) (h : p) : p := by
 -- ⇒ no warnings, no matter how deep.
 #guard_msgs in
 example (p : Prop) (h : p) : p := by
+  -- a follows from a nested proof of p
   have a : p := by
+    -- b follows from a deeper nested proof of p
     have b : p := by
-      have c : p := h
+      -- c is the original proof of p
+      have c : p := by
+        exact h
       exact c
     exact b
   exact a
@@ -53,17 +60,18 @@ example (p : Prop) (h : p) : p := by
 -- Non-terminal `skip` in the outer block AND in the inner block ⇒ two independent
 -- warnings; nesting does not mask either one.
 /--
-warning: non-terminal tactic `skip` found at position 66:2; must be `intro` or `have`
+warning: non-terminal tactic `skip` found at position 73:2; must be `have` (or `intro`, as the first tactic)
 
-Note: This linter can be disabled with `set_option linter.nonterminalDiscipline false`
+Note: This linter can be disabled with `set_option linter.tacticDiscipline false`
 ---
-warning: non-terminal tactic `skip` found at position 68:4; must be `intro` or `have`
+warning: non-terminal tactic `skip` found at position 76:4; must be `have` (or `intro`, as the first tactic)
 
-Note: This linter can be disabled with `set_option linter.nonterminalDiscipline false`
+Note: This linter can be disabled with `set_option linter.tacticDiscipline false`
 -/
 #guard_msgs in
 example (p : Prop) (h : p) : p := by
   skip
+  -- h2 follows from the original proof of p
   have h2 : p := by
     skip
     exact h
@@ -73,22 +81,27 @@ example (p : Prop) (h : p) : p := by
 -- inner `by` block legitimately opens with `intro` (its goal is a function type).
 #guard_msgs in
 example (p : Prop) (h : p) : p := by
+  -- h2 is the identity function on p
   have h2 : p → p := by
     intro hp
-    have hp' : p := hp
+    -- hp' is the introduced proof of p
+    have hp' : p := by
+      exact hp
     exact hp'
   exact h2 h
 
 -- A non-terminal `skip` buried one level deeper than a clean outer `have` is still
 -- caught: the outer block is clean, but the innermost block is not.
 /--
-warning: non-terminal tactic `skip` found at position 93:6; must be `intro` or `have`
+warning: non-terminal tactic `skip` found at position 106:6; must be `have` (or `intro`, as the first tactic)
 
-Note: This linter can be disabled with `set_option linter.nonterminalDiscipline false`
+Note: This linter can be disabled with `set_option linter.tacticDiscipline false`
 -/
 #guard_msgs in
 example (p : Prop) (h : p) : p := by
+  -- outer follows from an inner proof of p
   have outer : p := by
+    -- inner follows from the original proof of p
     have inner : p := by
       skip
       exact h
