@@ -1,15 +1,16 @@
 name = "LeanLint"
 version = "0.1.0"
-defaultTargets = ["leanlint"]
+# `Test` is a default target so a plain `lake build` (which is what CI runs) also builds
+# the `#guard_msgs` suite. Downstream packages that `require` LeanLint are unaffected: they
+# build only the modules they `import`, never another package's default targets.
+defaultTargets = ["LeanLint", "Test"]
 
+# The library. Downstream packages get the linters simply by `import LeanLint`.
 [[lean_lib]]
 name = "LeanLint"
 
 # Test suite: each module uses `#guard_msgs` so that building it *is* running the
 # tests — a mismatch between expected and actual linter output fails the build.
+# It is a separate target, so downstream users who `import LeanLint` never build it.
 [[lean_lib]]
 name = "Test"
-
-[[lean_exe]]
-name = "leanlint"
-root = "Main"

@@ -1,4 +1,2 @@
--- This module serves as the root of the `LeanLint` library.
--- Import modules here that should be built as part of the library.
-import LeanLint.Basic
+-- Root of the `LeanLint` library. Importing `LeanLint` registers every linter it provides.
 import LeanLint.NonterminalLinter
