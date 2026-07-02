@@ -1,0 +1,15 @@
+name = "LeanLint"
+version = "0.1.0"
+defaultTargets = ["leanlint"]
+
+[[lean_lib]]
+name = "LeanLint"
+
+# Test suite: each module uses `#guard_msgs` so that building it *is* running the
+# tests — a mismatch between expected and actual linter output fails the build.
+[[lean_lib]]
+name = "Test"
+
+[[lean_exe]]
+name = "leanlint"
+root = "Main"
