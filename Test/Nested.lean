@@ -135,4 +135,48 @@ example (p : Prop) (h : p) : p := by
         exact fun hp => hp
   exact key h
 
+-- A wrapped-statement `have` whose body is *under*-indented (column 3, one short of the
+-- expected 4) is flagged just the same — the anchor is the `have`, not the wrapped line.
+/--
+warning: tactic `exact fun hp =>
+  hp` found at position 150:3; tactics in this `by` block must be indented exactly two spaces past the enclosing `have`/`let`/declaration (expected column 4)
+
+Note: This linter can be disabled with `set_option linter.tacticDiscipline false`
+-/
+#guard_msgs in
+example (p : Prop) (h : p) : p := by
+  have key : p →
+      p := by
+   exact fun hp => hp
+  exact key h
+
+-- A wrapped-statement `have` with the terminal tactic sitting on the `:= by` line is flagged
+-- for the "start on the next line" rule, exactly as a single-line `have` would be.
+/--
+warning: tactic `exact fun hp => hp` found at position 163:14; tactics in a `by` block must start on the line after `by`
+
+Note: This linter can be disabled with `set_option linter.tacticDiscipline false`
+-/
+#guard_msgs in
+example (p : Prop) (h : p) : p := by
+  have key : p →
+      p := by exact fun hp => hp
+  exact key h
+
+-- The originally-reported shape: a deeply-wrapped statement with a far-over-indented body.
+-- The expected column is still 4 (two past the `have`), never a column read off the
+-- over-indented `p := by` continuation line.
+/--
+warning: tactic `exact fun hp =>
+  hp` found at position 179:10; tactics in this `by` block must be indented exactly two spaces past the enclosing `have`/`let`/declaration (expected column 4)
+
+Note: This linter can be disabled with `set_option linter.tacticDiscipline false`
+-/
+#guard_msgs in
+example (p : Prop) (h : p) : p := by
+  have key : p →
+                p := by
+          exact fun hp => hp
+  exact key h
+
 end Test.Nested
