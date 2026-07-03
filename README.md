@@ -8,7 +8,9 @@ single exception, the **very first** tactic may also be `intro`. Everything else
 
 The layout is intentionally strict too: `by` blocks start as `:= by`, tactics begin on the
 following line, tactic bodies are indented exactly two spaces past the line containing
-`by`, and every `have` has a `--` comment immediately above it plus its own `:= by` proof.
+`by`, and every `have` has its own `:= by` proof. Comments are optional, but any `--`
+comment inside a proof block must be a standalone line immediately followed by a `have` at
+the same indentation.
 
 So a disciplined block reads as an optional opening `intro`, then a run of commented
 `have`s, then one terminal tactic.
@@ -38,11 +40,11 @@ rest of the file.
 import LeanLint
 
 example (p : Prop) (h : p) : p → p := by
-  intro hp            -- first tactic → `intro` allowed here
+  intro hp
   -- hp' is the introduced proof of p
-  have hp' : p := by  -- non-terminal, but `have`  → allowed
+  have hp' : p := by
     exact hp
-  exact hp'           -- terminal → anything goes
+  exact hp'
 ```
 
 **Negative sample — wrong tactic** (`simp` is non-terminal and not a `have`):
@@ -51,8 +53,8 @@ example (p : Prop) (h : p) : p → p := by
 import LeanLint
 
 example : True := by
-  simp     -- ⚠️ warning: non-terminal tactic `simp` found at position …; must be `have` (or `intro`, as the first tactic)
-  trivial  -- terminal → fine
+  simp
+  trivial
 ```
 
 **Negative sample — misplaced `intro`** (`intro` is only allowed as the first tactic):
@@ -64,19 +66,52 @@ example (p q : Prop) (h : p) : q → p := by
   -- hp is the given proof of p
   have hp : p := by
     exact h
-  intro _  -- ⚠️ warning: `intro` is only allowed as the first tactic of a `by` block
+  intro _
   exact hp
 ```
 
-**Negative sample — layout** (`have` needs a comment above it, and automation cannot sit on
-the `:= by` line):
+**Negative sample — layout** (automation cannot sit on the `:= by` line):
 
 ```lean
 import LeanLint
 
 example (p : Prop) (h : p) : p := by
-  have hp : p := by exact h  -- ⚠️ warning: missing comment and same-line tactic
+  have hp : p := by exact h
   exact hp
+```
+
+**Comment placement** (comments are optional, but if present they must be standalone,
+aligned with, and directly above a `have`):
+
+```lean
+import LeanLint
+
+example (p : Prop) (h : p) : p := by
+  -- hp is the given proof of p
+  have hp : p := by
+    exact h
+  exact hp
+```
+
+These are flagged:
+
+```lean
+import LeanLint
+
+example (p : Prop) (h : p) : p := by
+  have hp : p := by -- trailing comments do not document the have
+    exact h
+  exact hp
+
+example (p : Prop) (h : p) : p := by
+    -- this comment is not aligned with the have
+  have hp : p := by
+    exact h
+  exact hp
+
+example (p : Prop) (h : p) : p := by
+  -- this comments the terminal tactic, not a have
+  exact h
 ```
 
 Turn it off (globally, or locally with `in`):

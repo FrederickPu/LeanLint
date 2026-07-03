@@ -7,23 +7,27 @@ example (a b c : Nat) (hab : a = b) (hbc : b = c) : a + 1 = c + 1 := by
   have ac : a = c := by
     rw [hab, hbc]
   -- adding 1 to both sides preserves equality
-  omega
+  have goal : a + 1 = c + 1 := by
+    omega
+  exact goal
 
 example (p q r : Prop) (hpq : p → q) (hqr : q → r) : p → r := by
-  -- assume p holds
   intro hp
   -- q follows from p via hpq
   have hq : q := by
     exact hpq hp
   -- r follows from q via hqr
-  exact hqr hq
+  have hr : r := by
+    exact hqr hq
+  exact hr
 
 example (p q : Prop) (hp : p) (hq : q) : q ∧ p := by
   -- construct q ∧ p by swapping the order of the hypotheses
-  exact And.intro hq hp
+  have conj : q ∧ p := by
+    exact And.intro hq hp
+  exact conj
 
 example (p q r : Prop) (hpq : p → q) (hqr : q → r) : p → q ∧ r := by
-  -- assume p holds
   intro hp
   -- q follows from p via hpq
   have hq : q := by
@@ -32,7 +36,9 @@ example (p q r : Prop) (hpq : p → q) (hqr : q → r) : p → q ∧ r := by
   have hr : r := by
     exact hqr hq
   -- combine q and r into the conjunction
-  exact And.intro hq hr
+  have conj : q ∧ r := by
+    exact And.intro hq hr
+  exact conj
 
 example (p q : Prop) (h : p ∧ q) : q ∧ p := by
   -- extract p from the left side of the conjunction
@@ -42,6 +48,8 @@ example (p q : Prop) (h : p ∧ q) : q ∧ p := by
   have hq : q := by
     exact h.2
   -- construct q ∧ p by swapping the order
-  exact And.intro hq hp
+  have conj : q ∧ p := by
+    exact And.intro hq hp
+  exact conj
 
 end Test.AgendDump.SubagentBatch.MimoV25FreeRetry

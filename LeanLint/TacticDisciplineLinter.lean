@@ -10,7 +10,9 @@ A **syntax linter** that enforces a disciplined, readable shape on every `by` bl
 * the **very first** tactic of the sequence may also be `intro`.
 * each `by` block starts as `:= by`, with its tactics on following lines indented exactly
   two spaces past the line containing `by`;
-* every `have` tactic is immediately preceded by a line comment and is proved with `:= by`.
+* every `have` tactic is proved with `:= by`;
+* every line comment in a proof block documents the `have` immediately below it at the
+  same indentation.
 
 So a well-formed block looks like an optional opening `intro`, then a run of commented
 `have`s, then a single terminal tactic. An `intro` anywhere but the front, any other
@@ -83,11 +85,33 @@ def lineText (fmap : FileMap) (line : Nat) : String :=
 def leadingColumns (line : String) : Nat :=
   line.toList.takeWhile (fun c => c == ' ' || c == '\t') |>.length
 
-def isLineComment (line : String) : Bool :=
-  line.trimAsciiStart.startsWith "--"
+partial def lineCommentColumnAux? : List Char → Nat → Option Nat
+  | '-' :: '-' :: _, col => some col
+  | _ :: cs, col => lineCommentColumnAux? cs (col + 1)
+  | [], _ => none
 
-def hasCommentAbove (fmap : FileMap) (pos : Position) : Bool :=
-  pos.line > 1 && isLineComment (lineText fmap (pos.line - 1))
+def lineCommentColumn? (line : String) : Option Nat :=
+  lineCommentColumnAux? line.toList 0
+
+def isLineComment (line : String) : Bool :=
+  match lineCommentColumn? line with
+  | some col => col == leadingColumns line
+  | none => false
+
+def lineStartsWithHave (line : String) : Bool :=
+  let trimmed := line.trimAsciiStart
+  trimmed.startsWith "have " || trimmed.startsWith "have\t"
+
+def lineStartsWithHaveAt (fmap : FileMap) (line col : Nat) : Bool :=
+  let text := lineText fmap line
+  leadingColumns text == col && lineStartsWithHave text
+
+def hasAlignedCommentAbove (fmap : FileMap) (pos : Position) : Bool :=
+  if pos.line > 1 then
+    let comment := lineText fmap (pos.line - 1)
+    isLineComment comment && leadingColumns comment == pos.column
+  else
+    false
 
 def hasInlineAssignBy (fmap : FileMap) (byTok : Syntax) : Bool :=
   let byPos := fmap.toPosition (byTok.getPos?.getD 0)
@@ -95,6 +119,23 @@ def hasInlineAssignBy (fmap : FileMap) (byTok : Syntax) : Bool :=
 
 def nestedByTactic? (stx : Syntax) : Option Syntax :=
   stx.find? (·.isOfKind byTacticKind)
+
+def byRange? (fmap : FileMap) (stx : Syntax) : Option (Nat × Nat) := do
+  let start ← stx.getPos?
+  let stop ← stx.getTailPos?
+  pure ((fmap.toPosition start).line, (fmap.toPosition stop).line)
+
+partial def nestedByRanges (fmap : FileMap) (stx : Syntax) : Array (Nat × Nat) :=
+  stx.getArgs.foldl (init := #[]) fun acc child =>
+    if child.isOfKind byTacticKind then
+      match byRange? fmap child with
+      | some r => acc.push r
+      | none => acc
+    else
+      acc ++ nestedByRanges fmap child
+
+def isInsideNestedBy (line : Nat) (ranges : Array (Nat × Nat)) : Bool :=
+  ranges.any fun r => r.1 < line && line <= r.2
 
 def checkByLayout (fmap : FileMap) (byTok : Syntax) : CommandElabM Unit := do
   unless hasInlineAssignBy fmap byTok do
@@ -115,12 +156,23 @@ def checkTacticIndent (fmap : FileMap) (byTok : Syntax) (t : Syntax) : CommandEl
 
 def checkHaveStyle (fmap : FileMap) (t : Syntax) : CommandElabM Unit := do
   let pos := fmap.toPosition (t.getPos?.getD 0)
-  unless hasCommentAbove fmap pos do
-    Linter.logLint linter.tacticDiscipline t
-      m!"`have` tactic at position {pos.line}:{pos.column} must be immediately preceded by a line comment"
   if (nestedByTactic? t).isNone then
     Linter.logLint linter.tacticDiscipline t
       m!"`have` tactic at position {pos.line}:{pos.column} must use a `:= by` proof"
+
+def checkCommentFormatting (fmap : FileMap) (byTok stx : Syntax) : CommandElabM Unit := do
+  let byPos := fmap.toPosition (byTok.getPos?.getD 0)
+  let endPos := fmap.toPosition (stx.getTailPos?.getD (byTok.getTailPos?.getD (byTok.getPos?.getD 0)))
+  let nested := nestedByRanges fmap (stx.getArg 1)
+  let mut line := byPos.line + 1
+  while line <= endPos.line do
+    unless isInsideNestedBy line nested do
+      let text := lineText fmap line
+      if let some col := lineCommentColumn? text then
+        unless lineStartsWithHaveAt fmap (line + 1) col do
+          Linter.logLint linter.tacticDiscipline byTok
+            m!"line comment at position {line}:{col} must be immediately followed by a `have` tactic at the same column"
+    line := line + 1
 
 def checkTacticShape (tacs : Array Syntax) : CommandElabM Unit := do
   -- `tacs.pop` drops the last (terminal) tactic; everything left is non-terminal. The
@@ -145,6 +197,7 @@ def checkByTactic (isTac : SyntaxNodeKind → Bool) (fmap : FileMap) (stx : Synt
   let byTok := stx.getArg 0
   let seq := stx.getArg 1
   checkByLayout fmap byTok
+  checkCommentFormatting fmap byTok stx
   let tacs := directTactics isTac seq
   for t in tacs do
     checkTacticIndent fmap byTok t

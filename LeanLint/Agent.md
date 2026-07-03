@@ -15,8 +15,10 @@ The linter enforces a fixed shape on every `by` block:
 - The first tactic after `by` must be on the next line, never on the `:= by` line.
 - Tactics inside a `by` block must be indented exactly two spaces past the line containing
   that `by`; do not double-indent proof bodies.
-- Every `have` tactic must be immediately preceded by a `--` line comment explaining the
-  informal step, and the `have` proof itself must use `:= by`.
+- Every `have` proof itself must use `:= by`.
+- Comments are optional, but every `--` comment inside a proof block must be a standalone
+  line immediately followed by a `have` tactic at the same indentation. Do not put trailing
+  comments after tactics, and do not comment `intro` or the terminal tactic.
 
 So a well-formed block is an optional opening `intro`, then a run of commented `have`s,
 then a single closing tactic. Nested `by` blocks (each `have`'s proof) are checked the same
@@ -25,8 +27,9 @@ way, at every depth.
 ## How to write the proof
 
 1. First think of the most sensible **informal** proof.
-2. Turn each informal step into a `have` whose statement is that step's conclusion. Put the
-   informal sentence as a `--` comment on the line immediately above the `have`.
+2. Turn each informal step into a `have` whose statement is that step's conclusion.
+   Comments are optional; when you include one, put it as a standalone `--` comment on the
+   line immediately above the `have`, aligned to the `have`.
 3. If the goal opens with hypotheses to introduce, do it with a single leading `intro` (it
    may take several names: `intro a b hab`). Introduce everything up front, not mid-proof.
 4. Write every `have` proof as `:= by` on the `have` line, then put the terminal tactic on
@@ -51,7 +54,8 @@ example (a b : Nat) (h : a = b) : a + 1 = b + 1 := by
   last line. Fold that work into a `have` or move it to terminal position.
 - An `intro` that is not the first tactic (e.g. a `have` before it). Hoist all `intro`s to
   the front.
-- A `have` without a comment immediately above it.
+- A comment in a proof block that is not immediately above an aligned `have`.
+- A trailing comment after a tactic, including after `have ... := by`.
 - A `have` proved by a bare term (`:= h`) or with `by` on the next line. Use `:= by` on the
   `have` line.
 - A tactic on the same line as `by`, such as `:= by exact ...`.
