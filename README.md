@@ -1,19 +1,26 @@
 # LeanLint
 
 A Lean 4 **syntax linter** enforcing *tactic discipline* and readable proof layout: every
-tactic in a `by` block that is not the last one in its sequence must be `have` — with a
-single exception, the **very first** tactic may also be `intro`. Everything else — `simp`,
-`rw`, `constructor`, `<;>`, focusing dots `·`, `case`, … — is only allowed in *terminal*
-(last) position, and an `intro` anywhere but the front is flagged too.
+tactic in a `by` block that is not the last one in its sequence must be `have` or `let` (both
+introduce a binding) — with a single exception, the **very first** tactic may also be
+`intro`. Everything else — `simp`, `rw`, `constructor`, `<;>`, focusing dots `·`, `case`, …
+— is only allowed in *terminal* (last) position, and an `intro` anywhere but the front is
+flagged too.
 
 The layout is intentionally strict too: `by` blocks start as `:= by`, tactics begin on the
-following line, tactic bodies are indented exactly two spaces past the line containing
-`by`, and every `have` has its own `:= by` proof. Comments are optional, but any `--`
-comment inside a proof block must be a standalone line immediately followed by a `have` at
-the same indentation.
+following line, tactic bodies are indented exactly two spaces past the `have`/`let`/declaration
+that owns the block (so a `have` whose statement wraps across several lines is still measured
+against the `have`, not the wrapped `by` line), and every `have` has its own `:= by` proof.
+Comments are optional, but any `--` comment inside a proof block must be a standalone line
+immediately followed by a `have` or `let` at the same indentation.
 
-So a disciplined block reads as an optional opening `intro`, then a run of commented
-`have`s, then one terminal tactic.
+So a disciplined block reads as an optional opening `intro`, then a run of commented `have`s
+and `let`s, then one terminal tactic.
+
+Those rules govern *proof* `by` blocks — the `:= by` value of a declaration or of a `have`.
+A **term-mode** `by`, written inline in a term (`f (by omega)`, `⟨by simp, …⟩`), is instead
+held to a single rule: it must contain exactly **one** tactic. So `(by omega)` is fine, but a
+tactic sequence like `(by split; omega; omega)` in term position is flagged.
 
 Nested `by` blocks (e.g. the proof of a `have`) are each checked on their own terms, at any
 depth.
@@ -55,6 +62,17 @@ example (p : Prop) (h : p) : p → p := by
   have hp' : p := by
     exact hp
   exact hp'
+```
+
+**Positive sample — `let`** (an abbreviation is non-terminal like `have`, needs no `:= by`):
+
+```lean
+import LeanLint
+
+example : ∃ n : Nat, n = 5 := by
+  -- m is the chosen witness
+  let m : Nat := 5
+  exact ⟨m, rfl⟩
 ```
 
 **Negative sample — wrong tactic** (`simp` is non-terminal and not a `have`):
@@ -122,6 +140,15 @@ example (p : Prop) (h : p) : p := by
 example (p : Prop) (h : p) : p := by
   -- this comments the terminal tactic, not a have
   exact h
+```
+
+**Negative sample — term-mode sequence** (an inline `by` may hold only one tactic):
+
+```lean
+import LeanLint
+
+example (f : True → True) : True :=
+  f (by skip; trivial)
 ```
 
 Turn it off (globally, or locally with `in`):

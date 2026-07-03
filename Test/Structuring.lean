@@ -18,11 +18,11 @@ namespace Test.Structuring
 -- `refine` (non-terminal) and the first focusing dot are flagged; the last dot is
 -- terminal and is not. ⇒ two warnings.
 /--
-warning: non-terminal tactic `refine ⟨?_, ?_⟩` found at position 31:2; must be `have` (or `intro`, as the first tactic)
+warning: non-terminal tactic `refine ⟨?_, ?_⟩` found at position 31:2; must be `have` or `let` (or `intro`, as the first tactic)
 
 Note: This linter can be disabled with `set_option linter.tacticDiscipline false`
 ---
-warning: non-terminal tactic `· trivial` found at position 32:2; must be `have` (or `intro`, as the first tactic)
+warning: non-terminal tactic `· trivial` found at position 32:2; must be `have` or `let` (or `intro`, as the first tactic)
 
 Note: This linter can be disabled with `set_option linter.tacticDiscipline false`
 -/
@@ -40,11 +40,12 @@ example : True ∧ True := by
 -- `constructor` and a non-terminal `<;>` combinator are both flagged; the final `exact`
 -- is terminal. ⇒ two warnings.
 /--
-warning: non-terminal tactic `constructor` found at position 53:2; must be `have` (or `intro`, as the first tactic)
+warning: non-terminal tactic `constructor` found at position 54:2; must be `have` or `let` (or `intro`, as the first tactic)
 
 Note: This linter can be disabled with `set_option linter.tacticDiscipline false`
 ---
-warning: non-terminal tactic `constructor <;> trivial` found at position 54:2; must be `have` (or `intro`, as the first tactic)
+warning: non-terminal tactic `constructor <;>
+  trivial` found at position 55:2; must be `have` or `let` (or `intro`, as the first tactic)
 
 Note: This linter can be disabled with `set_option linter.tacticDiscipline false`
 -/
@@ -57,11 +58,12 @@ example (p : Prop) (h : p) : (True ∧ True) ∧ p := by
 -- `constructor` and a non-terminal `case` block are both flagged; the trailing `trivial`
 -- is terminal. ⇒ two warnings.
 /--
-warning: non-terminal tactic `constructor` found at position 70:2; must be `have` (or `intro`, as the first tactic)
+warning: non-terminal tactic `constructor` found at position 72:2; must be `have` or `let` (or `intro`, as the first tactic)
 
 Note: This linter can be disabled with `set_option linter.tacticDiscipline false`
 ---
-warning: non-terminal tactic `case left => trivial` found at position 71:2; must be `have` (or `intro`, as the first tactic)
+warning: non-terminal tactic `case left =>
+  trivial` found at position 73:2; must be `have` or `let` (or `intro`, as the first tactic)
 
 Note: This linter can be disabled with `set_option linter.tacticDiscipline false`
 -/

@@ -6,7 +6,8 @@ import Lean
 A **syntax linter** that enforces a disciplined, readable shape on every `by` block:
 
 * the **last** tactic of a sequence is *terminal* and unrestricted;
-* every **earlier** (non-terminal) tactic must be `have` — with one exception:
+* every **earlier** (non-terminal) tactic must be `have` or `let` (both introduce a binding)
+  — with one exception:
 * the **very first** tactic of the sequence may also be `intro`.
 * each `by` block starts as `:= by`, with its tactics on following lines indented exactly
   two spaces past the line containing `by`;
@@ -14,9 +15,14 @@ A **syntax linter** that enforces a disciplined, readable shape on every `by` bl
 * every line comment in a proof block documents the `have` immediately below it at the
   same indentation.
 
+Those rules govern *proof* `by` blocks — the `:= by` value of a declaration or of a `have`.
+A **term-mode** `by` (one written inline in a term, e.g. `f (by omega)` or `⟨by simp, …⟩`)
+is instead held to a single rule: it must contain exactly **one** tactic, so `(by omega)`
+is fine but `(by split; omega; omega)` is not.
+
 So a well-formed block looks like an optional opening `intro`, then a run of commented
-`have`s, then a single terminal tactic. An `intro` anywhere but the front, any other
-non-terminal tactic (`simp`, `rw`, `constructor`, `<;>`, `·`, `case`, …), or a layout
+`have`s and `let`s, then a single terminal tactic. An `intro` anywhere but the front, any
+other non-terminal tactic (`simp`, `rw`, `constructor`, `<;>`, `·`, `case`, …), or a layout
 violation is flagged.
 
 Nested `by` blocks (e.g. the proof of a `have`) each spawn a new sequence and are checked
@@ -35,11 +41,11 @@ open Lean Elab Command Linter
 namespace TacticDisciplineLinter
 
 /-- Enable the tactic discipline linter: in every `by` block, non-terminal tactics must be
-`have`, except that the first tactic may also be `intro`; proof layout must follow the
-readability style documented in `LeanLint/Agent.md`. -/
+`have` or `let`, except that the first tactic may also be `intro`; proof layout must follow
+the readability style documented in `LeanLint/Agent.md`. -/
 register_option linter.tacticDiscipline : Bool := {
   defValue := true
-  descr := "non-terminal tactics must be `have` (or `intro`, as the first tactic), with disciplined proof layout"
+  descr := "non-terminal tactics must be `have` or `let` (or `intro`, as the first tactic), with disciplined proof layout"
 }
 
 /--
@@ -51,7 +57,16 @@ Verified against `leanprover/lean4:v4.31.0`:
 -/
 def introKind : Name := ``Lean.Parser.Tactic.intro
 def haveKind : Name := ``Lean.Parser.Tactic.tacticHave__
+def letKind : Name := ``Lean.Parser.Tactic.tacticLet__
 def byTacticKind : Name := ``Lean.Parser.Term.byTactic
+
+/-- Syntax nodes that hold a `:= <term>` *proof value*: a declaration body (`declValSimple`)
+and a `have`/`let` binding (`letIdDecl`). A `by` block that is a *direct* child of one of
+these is a *proof* `by`; any other `by` (nested inside a `paren`, application, anonymous
+constructor, …) is a *term-mode* `by`. -/
+def isProofValueHolder (k : SyntaxNodeKind) : Bool :=
+  k == ``Lean.Parser.Command.declValSimple ||
+  k == ``Lean.Parser.Term.letIdDecl
 
 /-- Wrapper kinds we descend *through* (they are structure, not tactics). -/
 def isSeqWrapper (k : SyntaxNodeKind) : Bool :=
@@ -98,13 +113,16 @@ def isLineComment (line : String) : Bool :=
   | some col => col == leadingColumns line
   | none => false
 
-def lineStartsWithHave (line : String) : Bool :=
+/-- Does the line's first token introduce a documentable binding — a `have` or a `let`? A
+line comment in a proof block must document one of these on the line immediately below it. -/
+def lineStartsWithHaveOrLet (line : String) : Bool :=
   let trimmed := line.trimAsciiStart
-  trimmed.startsWith "have " || trimmed.startsWith "have\t"
+  trimmed.startsWith "have " || trimmed.startsWith "have\t" ||
+  trimmed.startsWith "let " || trimmed.startsWith "let\t"
 
-def lineStartsWithHaveAt (fmap : FileMap) (line col : Nat) : Bool :=
+def lineStartsWithHaveOrLetAt (fmap : FileMap) (line col : Nat) : Bool :=
   let text := lineText fmap line
-  leadingColumns text == col && lineStartsWithHave text
+  leadingColumns text == col && lineStartsWithHaveOrLet text
 
 def hasAlignedCommentAbove (fmap : FileMap) (pos : Position) : Bool :=
   if pos.line > 1 then
@@ -143,16 +161,20 @@ def checkByLayout (fmap : FileMap) (byTok : Syntax) : CommandElabM Unit := do
     Linter.logLint linter.tacticDiscipline byTok
       m!"`by` block at position {pos.line}:{pos.column} must start as `:= by` on its declaration or `have` line"
 
-def checkTacticIndent (fmap : FileMap) (byTok : Syntax) (t : Syntax) : CommandElabM Unit := do
+/-- Check a tactic's indentation. `anchorCol` is the column of the `have`/`let`/declaration
+that owns this `by` block; the body must be indented exactly two columns past it. We anchor to
+that owner rather than to the physical line of `by`, because a `have` whose *statement* wraps
+onto several lines puts `by` on an over-indented continuation line. -/
+def checkTacticIndent (fmap : FileMap) (byTok : Syntax) (anchorCol : Nat) (t : Syntax) : CommandElabM Unit := do
   let byPos := fmap.toPosition (byTok.getPos?.getD 0)
   let pos := fmap.toPosition (t.getPos?.getD 0)
-  let expected := leadingColumns (lineText fmap byPos.line) + 2
+  let expected := anchorCol + 2
   if pos.line == byPos.line then
     Linter.logLint linter.tacticDiscipline t
       m!"tactic `{t}` found at position {pos.line}:{pos.column}; tactics in a `by` block must start on the line after `by`"
   else if pos.column != expected then
     Linter.logLint linter.tacticDiscipline t
-      m!"tactic `{t}` found at position {pos.line}:{pos.column}; tactics in this `by` block must be indented exactly two spaces past the line containing `by` (expected column {expected})"
+      m!"tactic `{t}` found at position {pos.line}:{pos.column}; tactics in this `by` block must be indented exactly two spaces past the enclosing `have`/`let`/declaration (expected column {expected})"
 
 def checkHaveStyle (fmap : FileMap) (t : Syntax) : CommandElabM Unit := do
   let pos := fmap.toPosition (t.getPos?.getD 0)
@@ -169,48 +191,82 @@ def checkCommentFormatting (fmap : FileMap) (byTok stx : Syntax) : CommandElabM 
     unless isInsideNestedBy line nested do
       let text := lineText fmap line
       if let some col := lineCommentColumn? text then
-        unless lineStartsWithHaveAt fmap (line + 1) col do
+        unless lineStartsWithHaveOrLetAt fmap (line + 1) col do
           Linter.logLint linter.tacticDiscipline byTok
-            m!"line comment at position {line}:{col} must be immediately followed by a `have` tactic at the same column"
+            m!"line comment at position {line}:{col} must be immediately followed by a `have` or `let` tactic at the same column"
     line := line + 1
 
 def checkTacticShape (tacs : Array Syntax) : CommandElabM Unit := do
-  -- `tacs.pop` drops the last (terminal) tactic; everything left is non-terminal. The
-  -- first non-terminal tactic (index 0) may be `intro`; all others must be `have`.
+  -- `tacs.pop` drops the last (terminal) tactic; everything left is non-terminal. Every
+  -- non-terminal tactic must be `have` or `let` (both introduce a binding); additionally the
+  -- first non-terminal tactic (index 0) may be `intro`.
   let mut first := true
   for t in tacs.pop do
     let k := t.getKind
     let isHave := k == haveKind
+    let isLet := k == letKind
     let isIntro := k == introKind
-    unless isHave || (isIntro && first) do
+    unless isHave || isLet || (isIntro && first) do
       let pos := (← getFileMap).toPosition (t.getPos?.getD 0)
       let reason :=
         if isIntro then
           "`intro` is only allowed as the first tactic of a `by` block"
         else
-          "must be `have` (or `intro`, as the first tactic)"
+          "must be `have` or `let` (or `intro`, as the first tactic)"
       Linter.logLint linter.tacticDiscipline t
         m!"non-terminal tactic `{t}` found at position {pos.line}:{pos.column}; {reason}"
     first := false
 
-def checkByTactic (isTac : SyntaxNodeKind → Bool) (fmap : FileMap) (stx : Syntax) : CommandElabM Unit := do
+def checkByTactic (isTac : SyntaxNodeKind → Bool) (fmap : FileMap) (anchorCol : Nat) (stx : Syntax) : CommandElabM Unit := do
   let byTok := stx.getArg 0
   let seq := stx.getArg 1
   checkByLayout fmap byTok
   checkCommentFormatting fmap byTok stx
   let tacs := directTactics isTac seq
+  -- Indentation is only meaningful once the `by` is placed as `:= by`; when it is not,
+  -- `checkByLayout` has already flagged the layout, so we do not pile on an indent warning.
+  let inlineBy := hasInlineAssignBy fmap byTok
   for t in tacs do
-    checkTacticIndent fmap byTok t
+    if inlineBy then
+      checkTacticIndent fmap byTok anchorCol t
     if t.getKind == haveKind then
       checkHaveStyle fmap t
   checkTacticShape tacs
 
-/-- Walk the whole command syntax; for every `by` block, check tactic shape and layout. -/
-partial def check (isTac : SyntaxNodeKind → Bool) (fmap : FileMap) (stx : Syntax) : CommandElabM Unit := do
+/-- A *term-mode* `by` block (one written inline in a term, e.g. `(by omega)`) must contain a
+single tactic; a tactic sequence such as `by split; omega; omega` is not allowed in term
+position. Layout/shape discipline does not apply here — only the single-tactic rule. -/
+def checkTermByTactic (isTac : SyntaxNodeKind → Bool) (fmap : FileMap) (stx : Syntax) : CommandElabM Unit := do
+  let byTok := stx.getArg 0
+  let tacs := directTactics isTac (stx.getArg 1)
+  if tacs.size > 1 then
+    let pos := fmap.toPosition (byTok.getPos?.getD 0)
+    Linter.logLint linter.tacticDiscipline byTok
+      m!"term-mode `by` block at position {pos.line}:{pos.column} must contain a single tactic; a tactic sequence like `by t₁; t₂` is not allowed in term position"
+
+/-- Walk the whole command syntax. A `by` block that is a *direct* child of a proof-value
+holder (see `isProofValueHolder`) is a proof block, checked for shape and layout; every other
+`by` block is a term-mode `by`, checked for the single-tactic rule. `parentIsProofHolder`
+carries that classification down from each node's parent. `anchorCol` is the column of the
+`have`/`let`/declaration that owns the `by` blocks below it; it drives the indentation check
+and is reset each time we descend into a fresh `have`/`let`. -/
+partial def check (isTac : SyntaxNodeKind → Bool) (fmap : FileMap) (parentIsProofHolder : Bool)
+    (anchorCol : Nat) (stx : Syntax) : CommandElabM Unit := do
   if stx.isOfKind byTacticKind then
-    checkByTactic isTac fmap stx
+    if parentIsProofHolder then
+      checkByTactic isTac fmap anchorCol stx
+    else
+      checkTermByTactic isTac fmap stx
+  let holder := isProofValueHolder stx.getKind
+  -- A `have`/`let` re-anchors the indentation to its own keyword column, so its proof body is
+  -- measured against the `have`/`let` (not against a wrapped continuation line of `by`).
+  let childAnchor :=
+    if stx.isOfKind haveKind || stx.isOfKind letKind then
+      (fmap.toPosition (stx.getPos?.getD 0)).column
+    else
+      anchorCol
   for a in stx.getArgs do
-    check isTac fmap a
+    check isTac fmap holder childAnchor a
 
 /-- The linter. `withSetOptionIn` lets it see through `set_option … in` command wrappers. -/
 def tacticDisciplineLinter : Linter where
@@ -225,7 +281,10 @@ def tacticDisciplineLinter : Linter where
     let cats := (Parser.parserExtension.getState env).categories
     let some tactics := Parser.ParserCategory.kinds <$> cats.find? `tactic
       | return
-    check (fun k => tactics.contains k) (← getFileMap) stx
+    let fmap ← getFileMap
+    -- The top-level declaration anchors the indentation of its own `:= by` proof body.
+    let declCol := (fmap.toPosition (stx.getPos?.getD 0)).column
+    check (fun k => tactics.contains k) fmap false declCol stx
 
 initialize addLinter tacticDisciplineLinter
 

@@ -4,7 +4,7 @@ import LeanLint
 # Tests: basic non-terminal discipline
 
 Flat (non-nested) `by` blocks: the last tactic is terminal and unrestricted; every earlier
-tactic must be `have` (or `intro`, as the first tactic).
+tactic must be `have` or `let` (or `intro`, as the first tactic).
 
 Each `#guard_msgs` asserts the exact linter output of the wrapped example, so building this
 file runs the tests. NOTE: the descriptive text for each case is a `--` line comment, never
@@ -24,7 +24,7 @@ example (p : Prop) (h : p) : p → p := by
 
 -- A single non-terminal `skip` (neither `intro` nor `have`) ⇒ one warning.
 /--
-warning: non-terminal tactic `skip` found at position 33:2; must be `have` (or `intro`, as the first tactic)
+warning: non-terminal tactic `skip` found at position 33:2; must be `have` or `let` (or `intro`, as the first tactic)
 
 Note: This linter can be disabled with `set_option linter.tacticDiscipline false`
 -/
@@ -40,11 +40,11 @@ example (p : Prop) (h : p) : p := by
 
 -- Two non-terminal offenders ⇒ two warnings, in source order.
 /--
-warning: non-terminal tactic `skip` found at position 53:2; must be `have` (or `intro`, as the first tactic)
+warning: non-terminal tactic `skip` found at position 53:2; must be `have` or `let` (or `intro`, as the first tactic)
 
 Note: This linter can be disabled with `set_option linter.tacticDiscipline false`
 ---
-warning: non-terminal tactic `skip` found at position 54:2; must be `have` (or `intro`, as the first tactic)
+warning: non-terminal tactic `skip` found at position 54:2; must be `have` or `let` (or `intro`, as the first tactic)
 
 Note: This linter can be disabled with `set_option linter.tacticDiscipline false`
 -/

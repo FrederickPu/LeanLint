@@ -30,7 +30,7 @@ example (p : Prop) (h : p) : p := by
 -- Inner block has a non-terminal `skip` ⇒ exactly one warning, reported inside the
 -- `have`'s proof, not on the `have` itself.
 /--
-warning: non-terminal tactic `skip` found at position 41:4; must be `have` (or `intro`, as the first tactic)
+warning: non-terminal tactic `skip` found at position 41:4; must be `have` or `let` (or `intro`, as the first tactic)
 
 Note: This linter can be disabled with `set_option linter.tacticDiscipline false`
 -/
@@ -60,11 +60,11 @@ example (p : Prop) (h : p) : p := by
 -- Non-terminal `skip` in the outer block AND in the inner block ⇒ two independent
 -- warnings; nesting does not mask either one.
 /--
-warning: non-terminal tactic `skip` found at position 73:2; must be `have` (or `intro`, as the first tactic)
+warning: non-terminal tactic `skip` found at position 73:2; must be `have` or `let` (or `intro`, as the first tactic)
 
 Note: This linter can be disabled with `set_option linter.tacticDiscipline false`
 ---
-warning: non-terminal tactic `skip` found at position 76:4; must be `have` (or `intro`, as the first tactic)
+warning: non-terminal tactic `skip` found at position 76:4; must be `have` or `let` (or `intro`, as the first tactic)
 
 Note: This linter can be disabled with `set_option linter.tacticDiscipline false`
 -/
@@ -93,7 +93,7 @@ example (p : Prop) (h : p) : p := by
 -- A non-terminal `skip` buried one level deeper than a clean outer `have` is still
 -- caught: the outer block is clean, but the innermost block is not.
 /--
-warning: non-terminal tactic `skip` found at position 106:6; must be `have` (or `intro`, as the first tactic)
+warning: non-terminal tactic `skip` found at position 106:6; must be `have` or `let` (or `intro`, as the first tactic)
 
 Note: This linter can be disabled with `set_option linter.tacticDiscipline false`
 -/
@@ -107,5 +107,32 @@ example (p : Prop) (h : p) : p := by
       exact h
     exact inner
   exact outer
+
+-- A `have` whose *statement* wraps across several lines puts `:= by` on an over-indented
+-- continuation line. The proof body is measured against the `have` keyword (column 2), not
+-- that continuation line, so a body indented exactly two past the `have` is clean.
+#guard_msgs in
+example (p : Prop) (h : p) : p := by
+  -- key carries p through a type spanning two lines
+  have key : p →
+      p := by
+    exact fun hp => hp
+  exact key h
+
+-- The same wrapped-statement `have`, but the body is indented against the continuation line
+-- instead of the `have`. That is flagged, and the expected column is 4 (two past the `have`
+-- at column 2) — not a column derived from the wrapped `p := by` line.
+/--
+warning: tactic `exact fun hp =>
+  hp` found at position 135:8; tactics in this `by` block must be indented exactly two spaces past the enclosing `have`/`let`/declaration (expected column 4)
+
+Note: This linter can be disabled with `set_option linter.tacticDiscipline false`
+-/
+#guard_msgs in
+example (p : Prop) (h : p) : p := by
+  have key : p →
+      p := by
+        exact fun hp => hp
+  exact key h
 
 end Test.Nested

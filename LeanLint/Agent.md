@@ -9,20 +9,24 @@ The linter enforces a fixed shape on every `by` block:
 
 - The **last** tactic of a block is *terminal* and unrestricted — use whatever automation
   closes the goal (`exact`, `simp`, `omega`, `decide`, `constructor <;> …`, …).
-- Every **earlier** (non-terminal) tactic must be `have`.
+- Every **earlier** (non-terminal) tactic must be `have` or `let` (both introduce a binding:
+  `have` an assumption, `let` an abbreviation).
 - The **only** exception: the very first tactic of a block may be `intro`.
 - Every `by` block must start as `:= by` on the declaration or `have` line.
 - The first tactic after `by` must be on the next line, never on the `:= by` line.
-- Tactics inside a `by` block must be indented exactly two spaces past the line containing
-  that `by`; do not double-indent proof bodies.
-- Every `have` proof itself must use `:= by`.
+- Tactics inside a `by` block must be indented exactly two spaces past the `have`/`let`/
+  declaration that owns the block; do not double-indent proof bodies. (If a `have`'s statement
+  wraps across several lines, the body is still measured against the `have`, not the wrapped
+  `by` line.)
+- Every `have` proof itself must use `:= by`. A `let` needs no `:= by` — its value is an
+  ordinary term (`let m : Nat := 5`).
 - Comments are optional, but every `--` comment inside a proof block must be a standalone
-  line immediately followed by a `have` tactic at the same indentation. Do not put trailing
-  comments after tactics, and do not comment `intro` or the terminal tactic.
+  line immediately followed by a `have` or `let` tactic at the same indentation. Do not put
+  trailing comments after tactics, and do not comment `intro` or the terminal tactic.
 
-So a well-formed block is an optional opening `intro`, then a run of commented `have`s,
-then a single closing tactic. Nested `by` blocks (each `have`'s proof) are checked the same
-way, at every depth.
+So a well-formed block is an optional opening `intro`, then a run of commented `have`s and
+`let`s, then a single closing tactic. Nested `by` blocks (each `have`'s proof) are checked
+the same way, at every depth.
 
 ## How to write the proof
 
@@ -56,7 +60,7 @@ example (a b : Nat) (h : a = b) : a + 1 = b + 1 := by
   last line. Fold that work into a `have` or move it to terminal position.
 - An `intro` that is not the first tactic (e.g. a `have` before it). Hoist all `intro`s to
   the front.
-- A comment in a proof block that is not immediately above an aligned `have`.
+- A comment in a proof block that is not immediately above an aligned `have` or `let`.
 - A trailing comment after a tactic, including after `have ... := by`.
 - A `have` proved by a bare term (`:= h`) or with `by` on the next line. Use `:= by` on the
   `have` line.

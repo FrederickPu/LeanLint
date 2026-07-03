@@ -23,7 +23,7 @@ example (p : Prop) (h : p) : p := by
 
 -- A trailing comment on the `have` line is not enough; the comment must be above it.
 /--
-warning: line comment at position 32:20 must be immediately followed by a `have` tactic at the same column
+warning: line comment at position 32:20 must be immediately followed by a `have` or `let` tactic at the same column
 
 Note: This linter can be disabled with `set_option linter.tacticDiscipline false`
 -/
@@ -35,7 +35,7 @@ example (p : Prop) (h : p) : p := by
 
 -- A blank line between the comment and `have` is not immediate, so it is flagged.
 /--
-warning: line comment at position 44:2 must be immediately followed by a `have` tactic at the same column
+warning: line comment at position 44:2 must be immediately followed by a `have` or `let` tactic at the same column
 
 Note: This linter can be disabled with `set_option linter.tacticDiscipline false`
 -/
@@ -57,7 +57,7 @@ example (p : Prop) (h : p) : p := by
 
 -- The comment must be aligned to the `have` it documents.
 /--
-warning: line comment at position 66:4 must be immediately followed by a `have` tactic at the same column
+warning: line comment at position 66:4 must be immediately followed by a `have` or `let` tactic at the same column
 
 Note: This linter can be disabled with `set_option linter.tacticDiscipline false`
 -/
@@ -70,7 +70,7 @@ example (p : Prop) (h : p) : p := by
 
 -- A proof-block comment must document a `have`, not a terminal tactic.
 /--
-warning: line comment at position 79:2 must be immediately followed by a `have` tactic at the same column
+warning: line comment at position 79:2 must be immediately followed by a `have` or `let` tactic at the same column
 
 Note: This linter can be disabled with `set_option linter.tacticDiscipline false`
 -/
@@ -120,7 +120,7 @@ example (p : Prop) (h : p) : p := by
 -- A nested proof body with two extra indentation steps is flagged.
 /--
 warning: tactic `exact
-  h` found at position 131:6; tactics in this `by` block must be indented exactly two spaces past the line containing `by` (expected column 4)
+  h` found at position 131:6; tactics in this `by` block must be indented exactly two spaces past the enclosing `have`/`let`/declaration (expected column 4)
 
 Note: This linter can be disabled with `set_option linter.tacticDiscipline false`
 -/
@@ -142,7 +142,7 @@ example : True := by trivial
 
 -- Top-level tactic bodies must use exactly one indentation step.
 /--
-warning: tactic `trivial` found at position 151:4; tactics in this `by` block must be indented exactly two spaces past the line containing `by` (expected column 2)
+warning: tactic `trivial` found at position 151:4; tactics in this `by` block must be indented exactly two spaces past the enclosing `have`/`let`/declaration (expected column 2)
 
 Note: This linter can be disabled with `set_option linter.tacticDiscipline false`
 -/
