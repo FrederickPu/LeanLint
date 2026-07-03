@@ -37,6 +37,8 @@ way, at every depth.
    line.
 5. Close every `have`'s proof — and the final goal — with **terminal** automation: the last
    tactic of each block does the work.
+6. Verify generated files with `lake exe leanlint-check path/to/File.lean`. This enables
+   LeanLint even if the file itself does not import it.
 
 ## Example
 

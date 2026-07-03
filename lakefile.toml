@@ -14,3 +14,8 @@ name = "LeanLint"
 # It is a separate target, so downstream users who `import LeanLint` never build it.
 [[lean_lib]]
 name = "Test"
+
+# CLI helper: check a Lean file with LeanLint enabled without editing the file to import it.
+[[lean_exe]]
+name = "leanlint-check"
+root = "LeanLint.Check"

@@ -34,6 +34,16 @@ rev = "master"
 Then, in any file, just import it — the linter registers itself on import and runs on the
 rest of the file.
 
+Or, to check a file without editing it to import `LeanLint`, run:
+
+```sh
+lake exe leanlint-check path/to/File.lean
+```
+
+This helper creates a temporary wrapper beside the target file, prepends `import LeanLint`,
+runs Lean, prints any output, and removes the wrapper. It exits nonzero if Lean reports an
+error or warning.
+
 **Positive sample** (clean — an opening `intro`, then `have`, then a terminal tactic):
 
 ```lean
@@ -127,6 +137,7 @@ example : True := by simp; trivial
 lake build          # build the library and run the test suite
 lake build LeanLint # library only
 lake build Test     # tests only
+lake exe leanlint-check path/to/File.lean # check one file with LeanLint enabled
 ```
 
 The [`Test`](./Test) library is the test suite: each case wraps an `example` in
